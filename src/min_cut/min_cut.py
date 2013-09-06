@@ -3,7 +3,9 @@ Created on Sep 2, 2013
 
 @author: swimberly
 '''
+
 import random
+import argparse
 
 
 def read_file(filename):
@@ -11,6 +13,7 @@ def read_file(filename):
     Read the file containing the adjacency list and convert the file into a list of vertices and a list of edges.
     edges represented as: (<vertex1_num, vertex2_num)
     vertices represented as: {vertex_num: [<adjacent_vertex>, <adjacent_vertex>}, ...}
+    Assumes that all vertices are integers
     @return: A list of edges, and a list of vertices
     '''
     vertex_dict = {}
@@ -18,8 +21,8 @@ def read_file(filename):
     with open(filename, 'r') as file:
         for row in file:
             row_list = row.split()
-            vertex_num = row_list[0]
-            adjacencies = row_list[1:]
+            vertex_num = int(row_list[0])
+            adjacencies = [int(x) for x in row_list[1:]]
             vertex_dict[vertex_num] = adjacencies
             edges = [tuple(sorted([vertex_num, vertex2])) for vertex2 in adjacencies]
             edge_list += edges
@@ -37,8 +40,12 @@ def replace_all(vertex_list, old_val, new_val):
 
 
 class AdjacencyList(object):
-    def __init__(self, filename):
-        edge_list, vertex_dict = read_file(filename)
+    '''
+    Object for maintaining the components of the adjacency list
+    '''
+    def __init__(self, filename=None, edge_list=None, vertex_dict=None):
+        if filename:
+            edge_list, vertex_dict = read_file(filename)
         self.edge_list = edge_list
         self.vertex_dict = vertex_dict
 
@@ -46,14 +53,13 @@ class AdjacencyList(object):
         '''
         randomly select an edge and perform a contraction of the vertices contected by that edge
         '''
-        if len(self.edge_list) == 0:
-            print('bad')
         edge_pair = random.choice(self.edge_list)
         self.contract(edge_pair)
 
     def contract(self, edge_pair):
         '''
         given an edge, contract the two vertices connected by that edge.
+        @param edge_pair: A pair of vertices. ie. (2, 5)
         '''
         new_vertex_name = edge_pair[0]
         self.update_edge_list(edge_pair, new_vertex_name)
@@ -67,17 +73,13 @@ class AdjacencyList(object):
         # Convert all occurrences of the edge_pair values to the new_vertex name
         for vertex in self.vertex_dict:
             if vertex in edge_pair:
+                # Skip this case as it is removed later
                 continue
-            for old_vert in edge_pair:
-                if old_vert in self.vertex_dict[vertex]:
-                    #old_vert_index = self.vertex_dict[vertex].index(old_vert)
-                    self.vertex_dict[vertex] = replace_all(self.vertex_dict[vertex], old_vert, new_vertex_name)
-                    #self.vertex_dict[vertex][old_vert_index] = new_vertex_name
 
-        #print(edge_pair)
-        #print(self.vertex_dict)
-        #print(self.edge_list)
-        #print()
+            for old_vert in edge_pair:
+                # replace all occurences of the old vertex name with the new name
+                self.vertex_dict[vertex] = replace_all(self.vertex_dict[vertex], old_vert, new_vertex_name)
+
         # pull out the values in each of the lists
         vert1_list = self.vertex_dict[edge_pair[0]]
         vert2_list = self.vertex_dict[edge_pair[1]]
@@ -91,11 +93,6 @@ class AdjacencyList(object):
         # add the new value
         self.vertex_dict[new_vertex_name] = new_vert_list
 
-        #print('after')
-        #print(self.vertex_dict)
-        #print(self.edge_list)
-        #print()
-
     def update_edge_list(self, edge_pair, new_vertex_name):
         '''
         Loop through the list of edge_pairs and make the following updates:
@@ -107,9 +104,9 @@ class AdjacencyList(object):
             new_pair = pair
 
             # check if either vertex is in the pair
-            if edge_pair[0] in pair:
+            if new_pair[0] in edge_pair:
                 new_pair = (new_vertex_name, new_pair[1])
-            if edge_pair[1] in pair:
+            if new_pair[1] in edge_pair:
                 new_pair = (new_pair[0], new_vertex_name)
 
             # Order vertices in order to compare
@@ -123,18 +120,26 @@ class AdjacencyList(object):
 
 def multi_run_random_min_cut(filename, attempt_num=10):
     '''
+    Run the min cut multiple times and return the min result
+    @param filename: The name of the file
+    @param attempt_num: The number of attempts to make
+    @return: the min of the minimum cut
     '''
     min_cuts = []
-    adjacent_list = AdjacencyList(filename)
-    for _i in range(attempt_num):
+    for i in range(attempt_num):
+        adjacent_list = AdjacencyList(filename)
         min_cut = single_run_random_min_cut(adjacent_list)
         min_cuts.append(min_cut)
+        print('min cut from round %d: %d' % (i, min_cut))
 
     return min(min_cuts)
 
 
 def single_run_random_min_cut(adjacent_list):
     '''
+    Run the min cut once and return the result
+    @param adjacent_list: An AdjacentList object
+    @return: The min cut
     '''
     while len(adjacent_list.vertex_dict) > 2:
         adjacent_list.do_random_contraction()
@@ -142,24 +147,27 @@ def single_run_random_min_cut(adjacent_list):
     min_cuts = []
     for vert in adjacent_list.vertex_dict:
         min_cut = len(adjacent_list.vertex_dict[vert])
-        print(vert, adjacent_list.vertex_dict[vert])
         min_cuts.append(min_cut)
-    print('min_cuts', min_cuts[0], min_cuts[1])
-    print(adjacent_list.edge_list)
-    print(adjacent_list.vertex_dict)
-    #assert min_cuts[0] == min_cuts[1]
+
+    assert min_cuts[0] == min_cuts[1]
     return min_cuts[0]
 
+
+def main(filename, rounds=10):
+    '''
+    main method
+    @param filename: the name of the file
+    '''
+    print('Calculating min cut. Running %d rounds' % rounds)
+    min_cut = multi_run_random_min_cut(filename, rounds)
+    print('Final min cut:', min_cut)
+
+
 if __name__ == '__main__':
-    #result = read_file('/Users/swimberly/Documents/sethwimberly-git/algorithms/test_files/min_cut/kargerMinCut.txt')
-    adj_list = AdjacencyList('/Users/swimberly/Documents/sethwimberly-git/algorithms/test_files/min_cut/kargerMinCut.txt')
-    adj_list.edge_list = [(1, 2), (1, 3), (1, 4), (2, 1), (2, 3), (2, 4), (4, 1), (4, 2), (4, 5), (5, 4)]
-    adj_list.vertex_dict = {1: [2, 3, 4], 2: [1, 3, 4], 3: [1, 2], 4: [1, 2, 5], 5: [4]}
-    #adj_list.contract((1, 3))
-#    print(adj_list.vertex_dict)
-#    print(adj_list.edge_list)
+    parser = argparse.ArgumentParser(description='Minimum Cut')
+    parser.add_argument('-f', '--filename', required=True, help='Name of the file')
+    parser.add_argument('-r', '--rounds', default=10, type=int,
+                        help='The number of rounds to run the random min_cut. Default:10')
+    args = parser.parse_args()
 
-    print()
-
-    single_run_random_min_cut(adj_list)
-    #print(multi_run_random_min_cut('/Users/swimberly/Documents/sethwimberly-git/algorithms/test_files/min_cut/kargerMinCut.txt'))
+    main(args.filename, args.rounds)
