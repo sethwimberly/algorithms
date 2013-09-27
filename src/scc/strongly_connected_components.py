@@ -4,6 +4,9 @@ Created on Sep 7, 2013
 @author: swimberly
 
 compute strongly connected components of a graph using Kosaraju's algorithm
+
+TODO: Use iterative DFS instead of recursive version for speed
+TODO: Use a more memory efficient method for maintaining nodes
 '''
 import argparse
 import sys
@@ -18,6 +21,10 @@ source_vertex = None
 
 def compute_scc(graph, graph_rev):
     '''
+    Compute the strongly connected components of a graph
+    @param graph: the Graph object
+    @param graph_rev: the Graph object representing the reverse of the graph
+    @return: A list of nodes by their respective leaders
     '''
     print('Starting pass 1')
     dfs_loop(graph_rev, 1)
@@ -31,6 +38,9 @@ def compute_scc(graph, graph_rev):
 
 def dfs_loop(graph, pass_num):
     '''
+    Loop through the vertices of the graph and do a depth first search on each
+    @param graph: The graph object to perform the depth first search on
+    @param pass_num: pass 1 or pass 2
     '''
     global number_nodes_so_far
     number_nodes_so_far = 0
@@ -47,6 +57,9 @@ def dfs_loop(graph, pass_num):
 
 def dfs(graph, start_node):
     '''
+    Perform a depth first search on each node starting at the start node
+    @param graph: graph object to search
+    @param start_node: where to initiate the search
     '''
     # use global copy of number_nodes_so_far
     global number_nodes_so_far
@@ -56,7 +69,6 @@ def dfs(graph, start_node):
     explored.add(start_node)
 
     # update leaders list
-    #graph.leaders[start_node] = source_vertex
     graph.nodes_by_leader[source_vertex] = graph.nodes_by_leader.get(source_vertex, []) + [start_node]
 
     # loop edges from the start_node and dfs on each
@@ -66,27 +78,25 @@ def dfs(graph, start_node):
 
     # update the number of nodes seen so far
     number_nodes_so_far += 1
+
     # update the finishing time
-    #graph.finishing_times[start_node] = number_nodes_so_far
     graph.nodes_by_finishing_time[number_nodes_so_far] = start_node
 
 
 def read_file(filename):
     '''
     Read the file and create 2 graphs G and Grev
+    @param filename: the name of the file to read
+    @return: the graph object and a graph object containing its revers
     '''
     print('Reading file')
-    #edge_list = []
-    #edge_list_rev = []
+
     vertex_dict = {}
     vertex_dict_rev = {}
     with open(filename, 'r') as file:
         for row in file:
             # create edge pair
             pair = tuple([int(x) for x in row.split()])
-            #rev_pair = (pair[1], pair[0])
-            #edge_list.append(pair)
-            #edge_list_rev.append(rev_pair)
 
             # update vertex lists, ensure all vertices have values in the dict
             vertex_dict[pair[0]] = vertex_dict.get(pair[0], []) + [pair[1]]
@@ -103,6 +113,11 @@ def read_file(filename):
 
 def find_max_scc(strongly_connecteds, num_counts):
     '''
+    Given a list of sccs, sort and return the first <num_counts> values
+    @param strongly_connecteds: a dict representing each leader and their list of
+    connected vertices
+    @param num_counts: the maximum number of values to return
+    @return: A list of highest counts of sccs
     '''
     print('finding max')
     scc_counts = [len(scc_list) for _scc, scc_list in strongly_connecteds.items()]
@@ -110,21 +125,20 @@ def find_max_scc(strongly_connecteds, num_counts):
 
 
 class Graph(object):
+    '''
+    Object for representing a graph
+    '''
     def __init__(self, vertex_dict):
-        #self.edge_list = edge_list
+        ''' Constructor '''
         self.vertex_dict = vertex_dict
 
         self.explored = set()
-        #self.finishing_times = {}
         self.nodes_by_finishing_time = {}
-        #self.leaders = {}
         self.nodes_by_leader = {}
         self.node_map = {}
 
 
 def main(filename):
-    '''
-    '''
     g, gr = read_file(filename)
 
     scc = compute_scc(g, gr)
